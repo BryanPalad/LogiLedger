@@ -1,4 +1,5 @@
 import { refreshRouteEstimate } from '../../../worker/route-estimate'
+import type { AuthData } from '../../../worker/auth'
 import { errorResponse, json, selectTrip, updateValues, validateTrip, type Env } from '../../../worker/trips'
 
 const UPDATE_SQL = `UPDATE trips SET
@@ -15,17 +16,17 @@ const UPDATE_SQL = `UPDATE trips SET
   destination_province_code = ?, destination_province = ?, destination_city_code = ?, destination_city = ?,
   destination_barangay_code = ?, destination_barangay = ?, destination_address = ?,
   sub_trips_json = ?
-  WHERE id = ?`
+  WHERE id = ? AND company_id = ?`
 
-export const onRequestPut: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestPut: PagesFunction<Env, string, AuthData> = async ({ request, env, params, data }) => {
   try {
     const id = String(params.id)
-    if (!await selectTrip(env.DB, id)) return json({ error: 'Trip not found.' }, 404)
+    if (!await selectTrip(env.DB, id, data.companyId)) return json({ error: 'Trip not found.' }, 404)
     const trip = validateTrip(await request.json())
     const now = new Date().toISOString()
-    await env.DB.prepare(UPDATE_SQL).bind(...updateValues(trip, now, id)).run()
+    await env.DB.prepare(UPDATE_SQL).bind(...updateValues(trip, now, id), data.companyId).run()
     await refreshRouteEstimate(env, id, trip)
-    return json(await selectTrip(env.DB, id))
+    return json(await selectTrip(env.DB, id, data.companyId))
   } catch (error) {
     if (error instanceof SyntaxError || error instanceof Error && !error.message.includes('D1')) {
       return json({ error: error instanceof Error ? error.message : 'Invalid trip data.' }, 400)
@@ -34,9 +35,9 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   }
 }
 
-export const onRequestDelete: PagesFunction<Env> = async ({ env, params }) => {
+export const onRequestDelete: PagesFunction<Env, string, AuthData> = async ({ env, params, data }) => {
   try {
-    const result = await env.DB.prepare('DELETE FROM trips WHERE id = ?').bind(String(params.id)).run()
+    const result = await env.DB.prepare('DELETE FROM trips WHERE id = ? AND company_id = ?').bind(String(params.id), data.companyId).run()
     if (!result.meta.changes) return json({ error: 'Trip not found.' }, 404)
     return new Response(null, { status: 204 })
   } catch (error) {

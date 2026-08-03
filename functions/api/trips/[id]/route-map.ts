@@ -1,4 +1,5 @@
 import { errorResponse, json, type Env } from '../../../../worker/trips'
+import type { AuthData } from '../../../../worker/auth'
 
 interface RouteMapRow {
   route_waypoints_json: string
@@ -16,12 +17,12 @@ const parseJson = <T>(value: string, fallback: T): T => {
   try { return JSON.parse(value) as T } catch { return fallback }
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestGet: PagesFunction<Env, string, AuthData> = async ({ request, env, params, data }) => {
   try {
     if (!env.GEOAPIFY_API_KEY) return json({ error: 'Route maps are not configured.' }, 404)
     const row = await env.DB.prepare(
-      'SELECT route_waypoints_json, route_geometry_json FROM trips WHERE id = ?',
-    ).bind(String(params.id)).first<RouteMapRow>()
+      'SELECT route_waypoints_json, route_geometry_json FROM trips WHERE id = ? AND company_id = ?',
+    ).bind(String(params.id), data.companyId).first<RouteMapRow>()
     if (!row) return json({ error: 'Trip not found.' }, 404)
 
     const storedWaypoints = parseJson<Waypoint[]>(row.route_waypoints_json, [])

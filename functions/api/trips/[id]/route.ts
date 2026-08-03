@@ -1,4 +1,5 @@
 import { json, type Env } from '../../../../worker/trips'
+import type { AuthData } from '../../../../worker/auth'
 
 interface RouteRow {
   route_waypoints_json: string
@@ -16,10 +17,10 @@ const parseJson = <T>(value: string, fallback: T): T => {
   try { return JSON.parse(value) as T } catch { return fallback }
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
+export const onRequestGet: PagesFunction<Env, string, AuthData> = async ({ env, params, data }) => {
   const row = await env.DB.prepare(
-    'SELECT route_waypoints_json, route_geometry_json FROM trips WHERE id = ?',
-  ).bind(String(params.id)).first<RouteRow>()
+    'SELECT route_waypoints_json, route_geometry_json FROM trips WHERE id = ? AND company_id = ?',
+  ).bind(String(params.id), data.companyId).first<RouteRow>()
   if (!row) return json({ error: 'Trip not found.' }, 404)
 
   const storedWaypoints = parseJson<Waypoint[]>(row.route_waypoints_json, [])
