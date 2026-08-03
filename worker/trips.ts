@@ -284,7 +284,7 @@ export const rowToTrip = (row: TripRow) => ({
   createdAt: row.created_at, updatedAt: row.updated_at,
 })
 
-export const selectTrip = async (db: D1Database, id: string) => {
-  const row = await db.prepare('SELECT * FROM trips WHERE id = ?').bind(id).first<TripRow>()
+export const selectTrip = async (db: D1Database, id: string, companyId: string) => {
+  const row = await db.prepare('SELECT * FROM trips WHERE id = ? AND company_id = ?').bind(id, companyId).first<TripRow>()
   return row ? rowToTrip(row) : null
 }
