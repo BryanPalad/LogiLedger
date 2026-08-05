@@ -1,4 +1,5 @@
 import type { Trip, TripInput } from '../types'
+import { authService } from './authService'
 
 const LEGACY_TRIPS_KEY = 'logistics-monitor-trips-v1'
 const SEARCH_KEY = 'logistics-monitor-search-v1'
@@ -58,7 +59,7 @@ export const storageService = {
   async getTrips(): Promise<Trip[]> {
     let trips = await request<Trip[]>('/api/trips')
     const legacyTrips = safeRead<Trip[]>(LEGACY_TRIPS_KEY, [])
-    if (!trips.length && legacyTrips.length) {
+    if (!trips.length && legacyTrips.length && authService.getRememberedCompany().id === 'z-l-palm-line-logistic') {
       await Promise.all(legacyTrips.map((trip) => createRemoteTrip(tripToInput(trip))))
       localStorage.removeItem(LEGACY_TRIPS_KEY)
       trips = await request<Trip[]>('/api/trips')

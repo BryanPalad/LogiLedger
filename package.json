@@ -1,5 +1,5 @@
 {
-  "name": "z-and-l-palm-line-logistic",
+  "name": "logiledger",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,11 +9,11 @@
     "build": "tsc -b && tsc -p tsconfig.worker.json && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "cf:dev": "npm run build && wrangler pages dev dist --d1 DB=2f5696b0-b87b-410b-be5b-05ab34ae3f14 --persist-to .wrangler/state --port 8790",
-    "cf:db:create": "wrangler d1 create z-and-l-logistics",
-    "cf:db:migrate:local": "wrangler d1 migrations apply z-and-l-logistics --local",
-    "cf:db:migrate:remote": "wrangler d1 migrations apply z-and-l-logistics --remote",
-    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name z-l-logistics-revenue-monitoring"
+    "cf:dev": "npm run build && wrangler pages dev dist --persist-to .wrangler/state --port 8790",
+    "cf:db:create": "wrangler d1 create logiledger-db",
+    "cf:db:migrate:local": "wrangler d1 migrations apply logiledger-db --local",
+    "cf:db:migrate:remote": "wrangler d1 migrations apply logiledger-db --remote",
+    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name logiledger"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

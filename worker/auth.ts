@@ -4,6 +4,8 @@ const COOKIE_NAME = 'logiledger_session'
 const SESSION_SECONDS = 7 * 24 * 60 * 60
 const MAX_ATTEMPTS = 5
 const ATTEMPT_WINDOW_SECONDS = 15 * 60
+const MAX_SIGNUPS = 3
+const SIGNUP_WINDOW_SECONDS = 60 * 60
 const PIN_HASH_ITERATIONS = 100_000
 
 export interface AuthData extends Record<string, unknown> {
@@ -16,6 +18,7 @@ interface CompanyRow {
   name: string
   pin_hash: string
   pin_salt: string
+  session_version: number
 }
 
 const encoder = new TextEncoder()
@@ -66,18 +69,18 @@ const requireSecrets = (env: Env) => {
   }
 }
 
-const clientKey = async (request: Request, secret: string) => {
+const clientKey = async (request: Request, secret: string, purpose: 'login' | 'signup') => {
   const address = request.headers.get('CF-Connecting-IP') ?? 'local-client'
-  return sign(`client:${address}`, secret)
+  return sign(`${purpose}:${address}`, secret)
 }
 
-const encodeSession = (data: { companyId: string; expiresAt: number }) =>
+const encodeSession = (data: { companyId: string; sessionVersion: number; expiresAt: number }) =>
   btoa(JSON.stringify(data)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
 const decodeSession = (value: string) => {
   try {
     const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')
-    return JSON.parse(atob(padded)) as { companyId?: unknown; expiresAt?: unknown }
+    return JSON.parse(atob(padded)) as { companyId?: unknown; sessionVersion?: unknown; expiresAt?: unknown }
   } catch { return null }
 }
 
@@ -90,8 +93,9 @@ export const getSession = async (request: Request, env: Env): Promise<AuthData |
   const expected = await sign(payload, env.SESSION_SECRET!)
   if (!constantTimeEqual(signature, expected)) return null
   const data = decodeSession(payload)
-  if (!data || typeof data.companyId !== 'string' || typeof data.expiresAt !== 'number' || data.expiresAt <= Math.floor(Date.now() / 1000)) return null
-  const company = await env.DB.prepare('SELECT id, name FROM companies WHERE id = ?').bind(data.companyId).first<{ id: string; name: string }>()
+  if (!data || typeof data.companyId !== 'string' || typeof data.sessionVersion !== 'number' || typeof data.expiresAt !== 'number' || data.expiresAt <= Math.floor(Date.now() / 1000)) return null
+  const company = await env.DB.prepare('SELECT id, name, session_version FROM companies WHERE id = ?').bind(data.companyId).first<{ id: string; name: string; session_version: number }>()
+  if (!company || company.session_version !== data.sessionVersion) return null
   return company ? { companyId: company.id, companyName: company.name } : null
 }
 
@@ -99,7 +103,9 @@ export const isAuthenticated = async (request: Request, env: Env) => Boolean(awa
 
 export const createSessionCookie = async (env: Env, companyId: string) => {
   requireSecrets(env)
-  const payload = encodeSession({ companyId, expiresAt: Math.floor(Date.now() / 1000) + SESSION_SECONDS })
+  const company = await env.DB.prepare('SELECT session_version FROM companies WHERE id = ?').bind(companyId).first<{ session_version: number }>()
+  if (!company) throw new Error('Company workspace was not found.')
+  const payload = encodeSession({ companyId, sessionVersion: company.session_version, expiresAt: Math.floor(Date.now() / 1000) + SESSION_SECONDS })
   const signature = await sign(payload, env.SESSION_SECRET!)
   return `${COOKIE_NAME}=${payload}.${signature}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_SECONDS}`
 }
@@ -108,13 +114,13 @@ export const clearSessionCookie = () =>
   `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
 
 const findCompany = async (env: Env, workspace: string) => env.DB.prepare(
-  'SELECT id, name, pin_hash, pin_salt FROM companies WHERE id = ? OR name = ? COLLATE NOCASE',
+  'SELECT id, name, pin_hash, pin_salt, session_version FROM companies WHERE id = ? OR name = ? COLLATE NOCASE',
 ).bind(workspace.trim().toLowerCase(), workspace.trim()).first<CompanyRow>()
 
 export const verifyPinAttempt = async (request: Request, env: Env, workspace: string, pin: string) => {
   requireSecrets(env)
   const company = await findCompany(env, workspace)
-  const key = await clientKey(request, `${env.SESSION_SECRET!}:${workspace.trim().toLowerCase()}`)
+  const key = await clientKey(request, env.SESSION_SECRET!, 'login')
   const now = Math.floor(Date.now() / 1000)
   const attempt = await env.DB.prepare(
     'SELECT attempt_count, window_started_at FROM auth_attempts WHERE client_key = ?',
@@ -164,6 +170,28 @@ export const registerCompany = async (env: Env, companyName: string, pin: string
   return { id, name }
 }
 
+export const consumeSignupAttempt = async (request: Request, env: Env) => {
+  requireSecrets(env)
+  const key = await clientKey(request, env.SESSION_SECRET!, 'signup')
+  const now = Math.floor(Date.now() / 1000)
+  const attempt = await env.DB.prepare(
+    'SELECT attempt_count, window_started_at FROM auth_attempts WHERE client_key = ?',
+  ).bind(key).first<{ attempt_count: number; window_started_at: number }>()
+
+  if (attempt && now - attempt.window_started_at < SIGNUP_WINDOW_SECONDS && attempt.attempt_count >= MAX_SIGNUPS) {
+    return SIGNUP_WINDOW_SECONDS - (now - attempt.window_started_at)
+  }
+  if (!attempt || now - attempt.window_started_at >= SIGNUP_WINDOW_SECONDS) {
+    await env.DB.prepare(
+      `INSERT INTO auth_attempts (client_key, attempt_count, window_started_at) VALUES (?, 1, ?)
+       ON CONFLICT(client_key) DO UPDATE SET attempt_count = 1, window_started_at = excluded.window_started_at`,
+    ).bind(key, now).run()
+  } else {
+    await env.DB.prepare('UPDATE auth_attempts SET attempt_count = attempt_count + 1 WHERE client_key = ?').bind(key).run()
+  }
+  return 0
+}
+
 export const changeCompanyPin = async (request: Request, env: Env, companyId: string, currentPin: string, newPin: string) => {
   if (!/^\d{6}$/.test(currentPin) || !/^\d{6}$/.test(newPin)) throw new Error('Both PINs must contain exactly six digits.')
   if (currentPin === newPin) throw new Error('Choose a new PIN that is different from the current PIN.')
@@ -172,7 +200,7 @@ export const changeCompanyPin = async (request: Request, env: Env, companyId: st
   if (!result.allowed || !result.company) throw new Error('The current PIN is incorrect.')
   const salt = randomHex(16)
   const pinHash = await hashPin(newPin, salt)
-  await env.DB.prepare('UPDATE companies SET pin_hash = ?, pin_salt = ?, updated_at = ? WHERE id = ?')
+  await env.DB.prepare('UPDATE companies SET pin_hash = ?, pin_salt = ?, session_version = session_version + 1, updated_at = ? WHERE id = ?')
     .bind(pinHash, salt, new Date().toISOString(), companyId).run()
 }
 
