@@ -73,6 +73,29 @@ export interface FuelLog extends FuelLogInput {
   updatedAt: string
 }
 
+export interface ShuttleServiceInput {
+  serviceDate: string
+  truckId: string
+  truckPlateNumber: string
+  clientCompany: string
+  serviceLocation: string
+  tripCount: number
+  driverName: string
+  revenue: number
+  driverRate: number
+  gasExpense: number
+  tollExpense: number
+  parkingExpense: number
+  otherExpense: number
+  notes: string
+}
+
+export interface ShuttleService extends ShuttleServiceInput {
+  id: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface TripInput {
   tripDate: string
   truckPlateNumber: string
