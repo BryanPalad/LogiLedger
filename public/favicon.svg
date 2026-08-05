@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>LogiLedger</title>
+  <defs>
+    <linearGradient id="brand" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4169E1"/>
+      <stop offset="1" stop-color="#2851D3"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="58" height="58" rx="15" fill="url(#brand)"/>
+  <path d="M22 20h17.5a6.5 6.5 0 0 1 0 13H25a6.5 6.5 0 0 0 0 13h17" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="19" cy="20" r="5" fill="#3158D6" stroke="#fff" stroke-width="3"/>
+  <circle cx="45" cy="46" r="5" fill="#3158D6" stroke="#fff" stroke-width="3"/>
+</svg>
