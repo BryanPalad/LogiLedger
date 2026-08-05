@@ -1,9 +1,9 @@
-name = "z-l-logistics-revenue-monitoring"
+name = "logiledger"
 compatibility_date = "2026-05-03"
 pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "z-and-l-logistics"
-database_id = "2f5696b0-b87b-410b-be5b-05ab34ae3f14"
+database_name = "logiledger-db"
+database_id = "8aac259e-c962-42ef-82ac-cd6192e0993c"
 migrations_dir = "migrations"

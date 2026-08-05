@@ -6,7 +6,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const body = await request.json<{ workspace?: unknown; pin?: unknown }>()
     const workspace = typeof body.workspace === 'string' ? body.workspace.trim() : ''
     const pin = typeof body.pin === 'string' ? body.pin : ''
-    if (!workspace) return json({ error: 'Enter your company name or workspace ID.' }, 400)
+    if (!workspace || workspace.length > 100) return json({ error: 'Enter a valid company name or workspace ID.' }, 400)
     if (!/^\d{6}$/.test(pin)) return json({ error: 'Enter a valid six-digit PIN.' }, 400)
 
     const result = await verifyPinAttempt(request, env, workspace, pin)
