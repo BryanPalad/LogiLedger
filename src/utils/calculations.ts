@@ -1,4 +1,4 @@
-import type { TripInput } from '../types'
+import type { ShuttleServiceInput, TripInput } from '../types'
 
 export const getOtherExpenses = (trip: TripInput) =>
   trip.parkingExpense + trip.tollExpense + trip.foodExpense + trip.otherExpense
@@ -9,6 +9,11 @@ export const getTotalExpenses = (trip: TripInput) =>
 export const getTotalRevenue = (trip: TripInput) => trip.revenue
 
 export const getEstimatedProfit = (trip: TripInput) => getTotalRevenue(trip) - getTotalExpenses(trip)
+
+export const getShuttleExpenses = (record: ShuttleServiceInput) =>
+  record.driverRate + record.gasExpense + record.tollExpense + record.parkingExpense + record.otherExpense
+
+export const getShuttleProfit = (record: ShuttleServiceInput) => record.revenue - getShuttleExpenses(record)
 
 const timeToMinutes = (time: string) => {
   if (!/^\d{2}:\d{2}$/.test(time)) return null

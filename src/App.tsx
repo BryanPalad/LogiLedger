@@ -7,6 +7,7 @@ import { LandingPage } from './components/LandingPage'
 import { PinLogin } from './components/PinLogin'
 import { SearchBar } from './components/SearchBar'
 import { SettingsPage } from './components/SettingsPage'
+import { ShuttleServicePage } from './components/ShuttleServicePage'
 import { SuccessToast } from './components/SuccessToast'
 import { TripModal } from './components/TripModal'
 import { TripDetailsModal } from './components/TripDetailsModal'
@@ -20,7 +21,8 @@ import { locationService } from './services/locationService'
 import { personnelService } from './services/personnelService'
 import { truckService } from './services/truckService'
 import { fuelLogService } from './services/fuelLogService'
-import type { FuelLog, FuelLogInput, ModalMode, Personnel, PersonnelInput, SavedLocation, SavedLocationInput, SavedTruck, SavedTruckInput, Trip, TripInput } from './types'
+import { shuttleService } from './services/shuttleService'
+import type { FuelLog, FuelLogInput, ModalMode, Personnel, PersonnelInput, SavedLocation, SavedLocationInput, SavedTruck, SavedTruckInput, ShuttleService, ShuttleServiceInput, Trip, TripInput } from './types'
 import { exportTripsToCsv } from './utils/exportCsv'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -41,6 +43,7 @@ function App() {
   const [personnel, setPersonnel] = useState<Personnel[]>([])
   const [savedTrucks, setSavedTrucks] = useState<SavedTruck[]>([])
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([])
+  const [shuttleRecords, setShuttleRecords] = useState<ShuttleService[]>([])
   const [authenticated, setAuthenticated] = useState(false)
   const [company, setCompany] = useState<CompanySession | null>(null)
   const [rememberedCompany, setRememberedCompany] = useState<CompanySession>(() => authService.getRememberedCompany())
@@ -69,8 +72,8 @@ function App() {
           setCompany(session)
           if (session) setRememberedCompany(session)
           if (session) {
-            const [loadedTrips, loadedLocations, loadedPersonnel, loadedTrucks, loadedFuelLogs] = await Promise.all([storageService.getTrips(), locationService.getLocations(), personnelService.getPersonnel(), truckService.getTrucks(), fuelLogService.getFuelLogs()])
-            setTrips(loadedTrips); setSavedLocations(loadedLocations); setPersonnel(loadedPersonnel); setSavedTrucks(loadedTrucks); setFuelLogs(loadedFuelLogs)
+            const [loadedTrips, loadedLocations, loadedPersonnel, loadedTrucks, loadedFuelLogs, loadedShuttleRecords] = await Promise.all([storageService.getTrips(), locationService.getLocations(), personnelService.getPersonnel(), truckService.getTrucks(), fuelLogService.getFuelLogs(), shuttleService.getRecords()])
+            setTrips(loadedTrips); setSavedLocations(loadedLocations); setPersonnel(loadedPersonnel); setSavedTrucks(loadedTrucks); setFuelLogs(loadedFuelLogs); setShuttleRecords(loadedShuttleRecords)
           }
         })
         .catch((error: unknown) => setStorageError(error instanceof Error ? error.message : 'Unable to load trips.'))
@@ -85,14 +88,14 @@ function App() {
   }, [toast])
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => {
-    const expireSession = () => { setAuthenticated(false); setCompany(null); setAuthView('login'); setTrips([]); setSavedLocations([]); setPersonnel([]); setSavedTrucks([]); setFuelLogs([]); setModal(null); setDeleteTarget(null); setViewTarget(null); setSidebarOpen(false); setToast(null) }
+    const expireSession = () => { setAuthenticated(false); setCompany(null); setAuthView('login'); setTrips([]); setSavedLocations([]); setPersonnel([]); setSavedTrucks([]); setFuelLogs([]); setShuttleRecords([]); setModal(null); setDeleteTarget(null); setViewTarget(null); setSidebarOpen(false); setToast(null) }
     window.addEventListener('auth-expired', expireSession)
     return () => window.removeEventListener('auth-expired', expireSession)
   }, [])
 
   const loadWorkspace = async () => {
-    const [loadedTrips, loadedLocations, loadedPersonnel, loadedTrucks, loadedFuelLogs] = await Promise.all([storageService.getTrips(), locationService.getLocations(), personnelService.getPersonnel(), truckService.getTrucks(), fuelLogService.getFuelLogs()])
-    setTrips(loadedTrips); setSavedLocations(loadedLocations); setPersonnel(loadedPersonnel); setSavedTrucks(loadedTrucks); setFuelLogs(loadedFuelLogs)
+    const [loadedTrips, loadedLocations, loadedPersonnel, loadedTrucks, loadedFuelLogs, loadedShuttleRecords] = await Promise.all([storageService.getTrips(), locationService.getLocations(), personnelService.getPersonnel(), truckService.getTrucks(), fuelLogService.getFuelLogs(), shuttleService.getRecords()])
+    setTrips(loadedTrips); setSavedLocations(loadedLocations); setPersonnel(loadedPersonnel); setSavedTrucks(loadedTrucks); setFuelLogs(loadedFuelLogs); setShuttleRecords(loadedShuttleRecords)
   }
   const login = async (pin: string, workspace?: string) => {
     const activeCompany = await authService.login(pin, workspace)
@@ -122,6 +125,7 @@ function App() {
     setPersonnel([])
     setSavedTrucks([])
     setFuelLogs([])
+    setShuttleRecords([])
     setModal(null)
     setDeleteTarget(null)
     setViewTarget(null)
@@ -221,6 +225,17 @@ function App() {
     setFuelLogs(await fuelLogService.getFuelLogs())
     setToast({ id: crypto.randomUUID(), message: 'Fuel purchase deleted.' })
   }
+  const saveShuttleRecord = async (input: ShuttleServiceInput, id?: string) => {
+    if (id) await shuttleService.updateRecord(id, input)
+    else await shuttleService.createRecord(input)
+    setShuttleRecords(await shuttleService.getRecords())
+    setToast({ id: crypto.randomUUID(), message: id ? 'Shuttle service record updated.' : 'Shuttle service record added.' })
+  }
+  const deleteShuttleRecord = async (id: string) => {
+    await shuttleService.deleteRecord(id)
+    setShuttleRecords(await shuttleService.getRecords())
+    setToast({ id: crypto.randomUUID(), message: 'Shuttle service record deleted.' })
+  }
   const changePin = async (currentPin: string, newPin: string) => {
     await authService.changePin(currentPin, newPin)
     setToast({ id: crypto.randomUUID(), message: 'Access PIN updated successfully.' })
@@ -259,6 +274,7 @@ function App() {
   const pageMeta: Record<AppPage, { title: string; description: string }> = {
     dashboard: { title: 'Dashboard', description: 'Operations overview' },
     trips: { title: 'Trips', description: 'Delivery ledger' },
+    shuttle: { title: 'Shuttle service', description: 'Daily shuttle tracking' },
     trucks: { title: 'Trucks', description: 'Fleet management' },
     crew: { title: 'Drivers & helpers', description: 'Crew management' },
     locations: { title: 'Locations', description: 'Saved addresses' },
@@ -275,7 +291,7 @@ function App() {
         </header>
         <main id="top">
           {storageError && <div className="error-banner" role="alert"><span>{storageError}</span><button onClick={() => setStorageError('')}>Dismiss</button></div>}
-          {activePage === 'dashboard' ? <DashboardOverview trips={trips} fuelLogs={fuelLogs} onNewTrip={() => setModal({ mode: 'create' })} onViewTrip={setViewTarget} onViewAllTrips={() => setActivePage('trips')} /> : activePage === 'trips' ? <>
+          {activePage === 'dashboard' ? <DashboardOverview trips={trips} fuelLogs={fuelLogs} shuttleRecords={shuttleRecords} onNewTrip={() => setModal({ mode: 'create' })} onViewTrip={setViewTarget} onViewAllTrips={() => setActivePage('trips')} /> : activePage === 'trips' ? <>
             <section className="page-heading trips-page-heading">
               <div><span className="eyebrow">TRIP RECORDS</span><h1>Delivery ledger</h1><p>Search, filter, review, and manage every logistics trip.</p></div>
               <button className="primary-button new-trip" onClick={() => setModal({ mode: 'create' })}><Plus size={19} /> New Trip</button>
@@ -286,7 +302,7 @@ function App() {
               <TripTable trips={visibleTrips} hasTrips={trips.length > 0} onNew={() => setModal({ mode: 'create' })} onView={setViewTarget} onEdit={(trip) => setModal({ mode: 'edit', trip })} onDuplicate={(trip) => setModal({ mode: 'duplicate', trip })} onDelete={setDeleteTarget} />
               {!!visibleTrips.length && <div className="table-footer">Showing <strong>{visibleTrips.length}</strong> of <strong>{monthFilteredTrips.length}</strong> trips</div>}
             </section>
-          </> : activePage === 'trucks' ? <TruckManagementModal trucks={savedTrucks} trips={trips} fuelLogs={fuelLogs} onSave={saveTruck} onDelete={deleteTruck} onSaveFuelLog={saveFuelLog} onDeleteFuelLog={deleteFuelLog} /> : activePage === 'crew' ? <PersonnelManagementModal personnel={personnel} onSave={savePerson} onDelete={deletePerson} /> : activePage === 'locations' ? <LocationManagementModal locations={savedLocations} onSave={saveLocation} onDelete={deleteLocation} /> : company ? <SettingsPage company={company} onChangePin={changePin} /> : null}
+          </> : activePage === 'shuttle' ? <ShuttleServicePage records={shuttleRecords} trucks={savedTrucks} locations={savedLocations} personnel={personnel} onSave={saveShuttleRecord} onDelete={deleteShuttleRecord} /> : activePage === 'trucks' ? <TruckManagementModal trucks={savedTrucks} trips={trips} fuelLogs={fuelLogs} onSave={saveTruck} onDelete={deleteTruck} onSaveFuelLog={saveFuelLog} onDeleteFuelLog={deleteFuelLog} /> : activePage === 'crew' ? <PersonnelManagementModal personnel={personnel} onSave={savePerson} onDelete={deletePerson} /> : activePage === 'locations' ? <LocationManagementModal locations={savedLocations} onSave={saveLocation} onDelete={deleteLocation} /> : company ? <SettingsPage company={company} onChangePin={changePin} /> : null}
         </main>
         <footer className="app-footer"><span>{company?.name ?? 'Company workspace'} · Powered by LogiLedger</span><span>Securely stored in Cloudflare D1</span></footer>
       </div>

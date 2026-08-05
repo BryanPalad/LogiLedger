@@ -1,23 +1,23 @@
 import { Banknote, ChartNoAxesCombined, ChevronDown, CircleDollarSign, Truck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { FuelLog, Trip } from '../types'
-import { formatPeso, getEstimatedProfit, getTotalExpenses, getTotalRevenue } from '../utils/calculations'
+import type { FuelLog, ShuttleService, Trip } from '../types'
+import { formatPeso, getEstimatedProfit, getShuttleExpenses, getShuttleProfit, getTotalExpenses, getTotalRevenue } from '../utils/calculations'
 
-interface Props { trips: Trip[]; fuelLogs?: FuelLog[] }
+interface Props { trips: Trip[]; fuelLogs?: FuelLog[]; shuttleRecords?: ShuttleService[] }
 
-export function SummaryCards({ trips, fuelLogs = [] }: Props) {
+export function SummaryCards({ trips, fuelLogs = [], shuttleRecords = [] }: Props) {
   const [expensesOpen, setExpensesOpen] = useState(false)
   const expenseCardRef = useRef<HTMLElement>(null)
-  const revenue = trips.reduce((sum, trip) => sum + getTotalRevenue(trip), 0)
+  const revenue = trips.reduce((sum, trip) => sum + getTotalRevenue(trip), 0) + shuttleRecords.reduce((sum, record) => sum + record.revenue, 0)
   const standaloneFuel = fuelLogs.reduce((sum, log) => sum + log.amount, 0)
-  const expenses = trips.reduce((sum, trip) => sum + getTotalExpenses(trip), 0) + standaloneFuel
-  const profit = trips.reduce((sum, trip) => sum + getEstimatedProfit(trip), 0) - standaloneFuel
-  const driverAndHelper = trips.reduce((sum, trip) => sum + trip.driverRate + trip.helperRate, 0)
-  const gas = trips.reduce((sum, trip) => sum + trip.gasExpense, 0) + standaloneFuel
-  const toll = trips.reduce((sum, trip) => sum + trip.tollExpense, 0)
-  const otherCosts = trips.reduce((sum, trip) => sum + trip.parkingExpense + trip.foodExpense + trip.otherExpense, 0)
+  const expenses = trips.reduce((sum, trip) => sum + getTotalExpenses(trip), 0) + standaloneFuel + shuttleRecords.reduce((sum, record) => sum + getShuttleExpenses(record), 0)
+  const profit = trips.reduce((sum, trip) => sum + getEstimatedProfit(trip), 0) + shuttleRecords.reduce((sum, record) => sum + getShuttleProfit(record), 0) - standaloneFuel
+  const driverAndHelper = trips.reduce((sum, trip) => sum + trip.driverRate + trip.helperRate, 0) + shuttleRecords.reduce((sum, record) => sum + record.driverRate, 0)
+  const gas = trips.reduce((sum, trip) => sum + trip.gasExpense, 0) + shuttleRecords.reduce((sum, record) => sum + record.gasExpense, 0) + standaloneFuel
+  const toll = trips.reduce((sum, trip) => sum + trip.tollExpense, 0) + shuttleRecords.reduce((sum, record) => sum + record.tollExpense, 0)
+  const otherCosts = trips.reduce((sum, trip) => sum + trip.parkingExpense + trip.foodExpense + trip.otherExpense, 0) + shuttleRecords.reduce((sum, record) => sum + record.parkingExpense + record.otherExpense, 0)
   const cards = [
-    { label: 'Total Trips', value: trips.length.toLocaleString(), icon: Truck, tone: 'blue', breakdown: undefined },
+    { label: 'Delivery Trips', value: trips.length.toLocaleString(), icon: Truck, tone: 'blue', breakdown: undefined },
     { label: 'Total Revenue', value: formatPeso(revenue), icon: CircleDollarSign, tone: 'violet', breakdown: undefined },
     { label: 'Total Expenses', value: formatPeso(expenses), icon: Banknote, tone: 'orange', breakdown: [
       { label: 'Driver + helper', value: formatPeso(driverAndHelper) },
@@ -45,7 +45,7 @@ export function SummaryCards({ trips, fuelLogs = [] }: Props) {
   }, [expensesOpen])
 
   return (
-    <section className="summary-grid" aria-label="Trip totals">
+    <section className="summary-grid" aria-label="Revenue monitoring totals">
       {cards.map(({ label, value, icon: Icon, tone, breakdown }) => breakdown ? (
         <article className="summary-card expense-menu-card" key={label} ref={expenseCardRef}>
           <div className={`summary-icon ${tone}`}><Icon size={21} strokeWidth={2} /></div>

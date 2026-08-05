@@ -1,6 +1,6 @@
-import { ClipboardList, LayoutDashboard, MapPinned, Route, Settings, Truck, UsersRound, X } from 'lucide-react'
+import { BusFront, ClipboardList, LayoutDashboard, MapPinned, Route, Settings, Truck, UsersRound, X } from 'lucide-react'
 
-export type AppPage = 'dashboard' | 'trips' | 'trucks' | 'crew' | 'locations' | 'settings'
+export type AppPage = 'dashboard' | 'trips' | 'shuttle' | 'trucks' | 'crew' | 'locations' | 'settings'
 
 interface Props {
   companyName: string
@@ -21,6 +21,7 @@ export function AppSidebar({ companyName, activePage, mobileOpen, onNavigate, on
         <p>Workspace</p>
         <button className={activePage === 'dashboard' ? 'active' : ''} onClick={() => navigate('dashboard')}><LayoutDashboard size={18} /><span>Dashboard</span></button>
         <button className={activePage === 'trips' ? 'active' : ''} onClick={() => navigate('trips')}><ClipboardList size={18} /><span>Trips</span></button>
+        <button className={activePage === 'shuttle' ? 'active' : ''} onClick={() => navigate('shuttle')}><BusFront size={18} /><span>Shuttle service</span></button>
         <p>Management</p>
         <button className={activePage === 'trucks' ? 'active' : ''} onClick={() => navigate('trucks')}><Truck size={18} /><span>Trucks</span></button>
         <button className={activePage === 'crew' ? 'active' : ''} onClick={() => navigate('crew')}><UsersRound size={18} /><span>Drivers &amp; helpers</span></button>
