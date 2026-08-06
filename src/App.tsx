@@ -88,6 +88,10 @@ function App() {
   }, [toast])
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => {
+    document.body.classList.toggle('sidebar-open', sidebarOpen)
+    return () => document.body.classList.remove('sidebar-open')
+  }, [sidebarOpen])
+  useEffect(() => {
     const expireSession = () => { setAuthenticated(false); setCompany(null); setAuthView('login'); setTrips([]); setSavedLocations([]); setPersonnel([]); setSavedTrucks([]); setFuelLogs([]); setShuttleRecords([]); setModal(null); setDeleteTarget(null); setViewTarget(null); setSidebarOpen(false); setToast(null) }
     window.addEventListener('auth-expired', expireSession)
     return () => window.removeEventListener('auth-expired', expireSession)

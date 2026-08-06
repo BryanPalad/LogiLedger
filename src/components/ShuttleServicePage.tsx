@@ -129,9 +129,12 @@ export function ShuttleServicePage({ records, trucks, locations, personnel, onSa
           {visibleRecords.map((record) => <article key={record.id}>
             <div className="shuttle-record-date"><small>SERVICE DATE</small><strong>{formatDate(record.serviceDate)}</strong><span>{record.tripCount} {record.tripCount === 1 ? 'run' : 'runs'}</span></div>
             <div className="shuttle-record-main"><strong>{record.clientCompany}</strong><span><MapPin size={13} /> {record.serviceLocation}</span><span><UserRound size={13} /> {record.driverName}</span>{record.notes && <p>{record.notes}</p>}</div>
-            <div className="shuttle-record-truck"><small>TRUCK</small><strong>{record.truckPlateNumber}</strong></div>
-            <div className="shuttle-record-finance"><small>REVENUE / PROFIT</small><strong>{formatPeso(record.revenue)}</strong><span className={getShuttleProfit(record) < 0 ? 'negative' : ''}>{formatPeso(getShuttleProfit(record))}</span></div>
-            <div className="saved-location-actions"><button type="button" onClick={() => edit(record)} disabled={saving} aria-label={`Edit ${record.clientCompany} shuttle record`}><Pencil size={15} /></button><button type="button" className={deletingId === record.id ? 'confirming' : ''} onClick={() => remove(record.id)} disabled={saving} aria-label={deletingId === record.id ? 'Confirm deleting shuttle record' : 'Delete shuttle record'}><Trash2 size={15} />{deletingId === record.id && <small>Confirm</small>}</button></div>
+            <div className="shuttle-record-meta">
+              <span><small>TRUCK</small><strong>{record.truckPlateNumber}</strong></span>
+              <span><small>REVENUE</small><strong>{formatPeso(record.revenue)}</strong></span>
+              <span><small>EST. PROFIT</small><strong className={getShuttleProfit(record) < 0 ? 'negative' : ''}>{formatPeso(getShuttleProfit(record))}</strong></span>
+            </div>
+            <div className="saved-location-actions"><button type="button" onClick={() => edit(record)} disabled={saving} aria-label={`Edit ${record.clientCompany} shuttle record`}><Pencil size={15} /><span className="shuttle-action-label">Edit</span></button><button type="button" className={deletingId === record.id ? 'confirming' : ''} onClick={() => remove(record.id)} disabled={saving} aria-label={deletingId === record.id ? 'Confirm deleting shuttle record' : 'Delete shuttle record'}><Trash2 size={15} />{deletingId === record.id ? <small>Confirm</small> : <span className="shuttle-action-label">Delete</span>}</button></div>
           </article>)}
         </div>
       </section>
