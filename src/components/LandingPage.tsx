@@ -58,6 +58,7 @@ export function LandingPage({ onSignIn, onCreateAccount }: Props) {
             <p>One simple workspace for monitoring routes, revenue, fleet costs, crew activity, and estimated profit.</p>
             <div className="landing-hero-actions">
               <button className="primary-button landing-primary-cta" type="button" onClick={onCreateAccount}>Create your workspace <ArrowRight size={18} /></button>
+              <button className="secondary-button landing-mobile-signin" type="button" onClick={onSignIn}>Sign in to your workspace</button>
               <button className="secondary-button landing-secondary-cta" type="button" onClick={scrollToFeatures}>See what it tracks</button>
             </div>
             <div className="landing-assurance">
